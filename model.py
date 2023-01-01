@@ -89,6 +89,9 @@ class CNN(nn.Module):
     def get_loss(self, pred, gt, eps=1e-7): 
         mean_pred = pred.mean()
 
+        lossl1 = self.lossl1(pred,gt)
+        lossl2 = self.lossl2(pred,gt)
+
         # transform to log in case of log loss 
         if self.log_transform:
             pred = self.soft_plus(pred)
@@ -97,10 +100,7 @@ class CNN(nn.Module):
             lossl1_log = self.lossl1(pred_log,gt_log)
             lossl2_log = self.lossl2(pred_log,gt_log)
 
-        lossl1 = self.lossl1(pred,gt)
-        lossl2 = self.lossl2(pred,gt)
-
-        optimization_loss = lossl1
+        optimization_loss = lossl1_log
 
         return optimization_loss, {
             "lossl1": lossl1,  "lossl2": lossl2, 

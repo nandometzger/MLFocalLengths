@@ -196,10 +196,12 @@ class Trainer:
             ])
 
             train_dataset = FocalLengthDataset(root_dir=r'C:\Users\nando\Pictures\SD Kartenbackups\All_hierarchical\2022',
-                transform=data_transform, hdf5_path="data/imgdataset.h5", force_recompute=False, mode="train")
+                transform=data_transform, hdf5_path="data/imgdataset3.h5", focal_length_path='data/split_file3.pickle',
+                force_recompute=False, mode="train", split_mode="time")
 
             val_dataset = FocalLengthDataset(root_dir=r'C:\Users\nando\Pictures\SD Kartenbackups\All_hierarchical\2022',
-                transform=data_transform, hdf5_path="data/imgdataset.h5", force_recompute=False, mode="val")
+                transform=data_transform, hdf5_path="data/imgdataset3.h5", focal_length_path='data/split_file3.pickle',
+                force_recompute=False, mode="val", split_mode="time")
 
             datasets = {"train": train_dataset, "val": val_dataset}
 

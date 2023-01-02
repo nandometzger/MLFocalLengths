@@ -23,10 +23,25 @@
             // "logToFile": true
             "args": [
                 "--save-dir", "myoutdir",
-                "--batch-size", "16",
-                "--lr", "0.001",
-                "--lr-step", "1",
-                "--w-decay", "0.00001"
+                "--batch-size", "64",
+                "--lr", "0.0001",
+                "--lr-step", "2",
+                "--lr-gamma", "0.9",
+                // "--w-decay", "1e-6",
+                "--in_memory"
+            ]
+        },
+        {
+            "name": "predict",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            // "logToFile": true
+            "args": [
+                "--checkpoint", "myoutdir/My/experiment_16/best_model.pth",
+                "--root_dir", "img/stone",
             ]
         }
     ]

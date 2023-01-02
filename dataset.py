@@ -7,7 +7,7 @@ import exifread
 
 from PIL import Image
 import rawpy
-import imageio 
+# import imageio 
 
 import numpy as np
 
@@ -21,6 +21,61 @@ import pickle
 
 # import tkinter as tk
 # import libraw
+
+class ImageFolder(Dataset):
+
+    def __init__(self, root_dir):
+        self.root_dir = root_dir
+
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)), 
+        ])
+
+        self.files = os.listdir(root_dir)
+
+
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+
+        name = self.files[idx] 
+        image_path = os.path.join(self.root_dir, name)
+        if image_path.split(".")[1] in ["jpg", "JPG"]:
+            with Image.open(image_path) as f: 
+                img = np.array(f)
+        else:
+            with rawpy.imread(image_path) as raw:  
+                try:
+                    img = raw.postprocess()
+                except:
+                    raise Exception("Couldn't handle this file type{}".format(image_path))
+
+        h, w, _ = img.shape 
+        if h<w:
+            img = np.transpose(img, (1,0,2))
+        h, w, _ = img.shape 
+
+        img = img[(h-w)//2:-(h-w)//2, :]
+        res = cv2.resize(img, dsize=(256, 256), interpolation=cv2.INTER_CUBIC)
+
+
+        # reshape 
+        img = np.transpose(img.astype(np.float32),(1,2,0))
+
+        # noramlize
+        v_min, v_max = img.min(), img.max()
+        new_min, new_max = 0.0, 1.0
+        img = (img - v_min)/(v_max - v_min + self.eps)*(new_max - new_min) + new_min
+
+        # apply transforms and augmentations
+        if self.transform:
+            img = self.transform(img)
+
+        return {'img': img, "path": image_path}
+
 
 class FocalLengthDataset(Dataset):
     def __init__(self, root_dir, transform=None, hdf5_path=None, focal_length_path=None, force_recompute=False, mode="train", split_mode="rand",

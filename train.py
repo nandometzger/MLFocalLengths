@@ -14,7 +14,7 @@ from torchvision import transforms
 from tqdm import tqdm
 import wandb 
 import matplotlib.pyplot as plt 
-from utils import seed_all, new_log
+from utils import seed_all, new_log, to_cuda
 from model import CNN
 
 from dataset import FocalLengthDataset
@@ -37,6 +37,7 @@ parser.add_argument('--wandb-project', type=str, default='focallengths', help='W
 parser.add_argument('--dataset', type=str, default="My", help='Name of the dataset')
 parser.add_argument('--num-workers', type=int, default=8, metavar='N', help='Number of dataloader worker processes')
 parser.add_argument('--batch-size', type=int, default=8)
+parser.add_argument('--in_memory', action='store_true', help='')
 
 # training
 parser.add_argument('--loss', default='l1', type=str, choices=['l1', 'mse'])
@@ -57,14 +58,17 @@ class Trainer:
 
     def __init__(self, args: argparse.Namespace):
         self.args = args
+        self.cuda = torch.cuda.is_available()
 
         self.dataloaders = self.get_dataloaders(args)
         
         seed_all(args.seed)
 
         self.model = CNN()
+        self.model = self.model.to("cuda") if self.cuda else self.model
 
         self.experiment_folder = new_log(os.path.join(args.save_dir, args.dataset), args)
+        self.args.experiment_folder = self.experiment_folder
 
         wandb.init(project=args.wandb_project, dir=self.experiment_folder)
         wandb.config.update(self.args)
@@ -123,7 +127,7 @@ class Trainer:
         with tqdm(self.dataloaders['train'], leave=False) as inner_tnr:
             inner_tnr.set_postfix(training_loss=np.nan)
             for i, sample in enumerate(inner_tnr):
-                # sample = to_cuda(sample)
+                sample = to_cuda(sample) if self.cuda else sample
 
                 self.optimizer.zero_grad()
 
@@ -164,10 +168,11 @@ class Trainer:
         self.model.eval()
 
         with torch.no_grad():
-            for sample in tqdm(self.dataloaders['val'], leave=False):
-                # sample = to_cuda(sample)
+            for sample in tqdm(self.dataloaders['val'], leave=False): 
+                sample = to_cuda(sample) if self.cuda else sample
 
                 output = self.model(sample)
+                # output = torch.ones_like(output)*45.7
 
                 loss, loss_dict = self.model.get_loss(output[:,0], sample["y"])
 
@@ -194,14 +199,18 @@ class Trainer:
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomVerticalFlip(p=0.5)
             ])
+            data_transform_eval = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)), 
+            ])
 
             train_dataset = FocalLengthDataset(root_dir=r'C:\Users\nando\Pictures\SD Kartenbackups\All_hierarchical\2022',
                 transform=data_transform, hdf5_path="data/imgdataset3.h5", focal_length_path='data/split_file3.pickle',
-                force_recompute=False, mode="train", split_mode="time")
+                force_recompute=False, mode="train", split_mode="time", in_memory=args.in_memory)
 
             val_dataset = FocalLengthDataset(root_dir=r'C:\Users\nando\Pictures\SD Kartenbackups\All_hierarchical\2022',
-                transform=data_transform, hdf5_path="data/imgdataset3.h5", focal_length_path='data/split_file3.pickle',
-                force_recompute=False, mode="val", split_mode="time")
+                transform=data_transform_eval, hdf5_path="data/imgdataset3.h5", focal_length_path='data/split_file3.pickle',
+                force_recompute=False, mode="val", split_mode="time", in_memory=args.in_memory)
 
             datasets = {"train": train_dataset, "val": val_dataset}
 

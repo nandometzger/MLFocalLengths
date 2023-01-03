@@ -9,7 +9,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from tqdm import tqdm
    
-from dataset import FocalLengthDataset
+from dataset import ImageFolder
 
 from utils import to_cuda
 from model import CNN
@@ -27,6 +27,7 @@ class Evaluator:
 
     def __init__(self, args: argparse.Namespace):
         self.args = args
+        self.cuda = torch.cuda.is_available()
 
         self.dataloader = self.get_dataloader(args)
 
@@ -41,27 +42,21 @@ class Evaluator:
     def evaluate(self):
         test_stats = defaultdict(float)
 
-        for sample in tqdm(self.dataloader, leave=False):
+        for sample in self.dataloader:
             sample = to_cuda(sample)
 
             output = self.model(sample)
 
-            _, loss_dict = self.model.get_loss(output, sample)
+            print(sample["path"][0][0] ,"Predicted", output.cpu().item(), "mm")
 
-            for key in loss_dict:
-                test_stats[key] += loss_dict[key]
-
-        return {k: v / len(self.dataloader) for k, v in test_stats.items()}
+        return None
 
     @staticmethod
     def get_dataloader(args: argparse.Namespace):
         
         dataset = ImageFolder(args.root_dir)
-            
-        else:
-            raise NotImplementedError(f'Dataset {args.dataset}')
 
-        return DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False, drop_last=False)
+        return DataLoader(dataset, batch_size=1, num_workers=args.num_workers, shuffle=False, drop_last=False)
 
     def resume(self, path):
         if not os.path.isfile(path):
@@ -75,14 +70,13 @@ class Evaluator:
 
 
 if __name__ == '__main__':
-    args = eval_parser.parse_args()
-    print(eval_parser.format_values())
-
+    args = parser.parse_args()
+    print(parser.format_values())
+    
     evaluator = Evaluator(args)
 
     since = time.time()
     stats = evaluator.evaluate()
     time_elapsed = time.time() - since
 
-    print('Evaluation completed in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print(stats)

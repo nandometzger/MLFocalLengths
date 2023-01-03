@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 from torchvision.models import efficientnet_b2, EfficientNet_B2_Weights
 from torchvision.models import efficientnet_b3, EfficientNet_B3_Weights
+from torchvision.models import efficientnet_b4, EfficientNet_B4_Weights
+from torchvision.models import efficientnet_b5, EfficientNet_B5_Weights
 
 
 # Define a simple convolutional neural network
@@ -13,8 +15,9 @@ class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
         # self.model = efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
-        self.model = efficientnet_b2(weights=EfficientNet_B2_Weights.IMAGENET1K_V1)
-        # self.model = efficientnet_b3(weights=EfficientNet_B3_Weights.IMAGENET1K_V1)
+        # self.model = efficientnet_b2(weights=EfficientNet_B2_Weights.IMAGENET1K_V1)
+        self.model = efficientnet_b4(weights=EfficientNet_B4_Weights.IMAGENET1K_V1)
+        # self.model = efficientnet_b5(weights=EfficientNet_B5_Weights.IMAGENET1K_V1)
         self.fc1 = nn.Linear(1000, 1)
         
         self.lossl1 = torch.nn.L1Loss()

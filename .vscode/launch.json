@@ -25,7 +25,7 @@
                 "--save-dir", "myoutdir",
                 "--batch-size", "64",
                 "--lr", "0.0001",
-                "--lr-step", "2",
+                "--lr-step", "4",
                 "--lr-gamma", "0.9",
                 // "--w-decay", "1e-6",
                 "--in_memory"
@@ -35,13 +35,13 @@
             "name": "predict",
             "type": "python",
             "request": "launch",
-            "program": "train.py",
+            "program": "predict.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             // "logToFile": true
             "args": [
-                "--checkpoint", "myoutdir/My/experiment_16/best_model.pth",
-                "--root_dir", "img/stone",
+                "--checkpoint", "myoutdir/My/experiment_21/best_model.pth",
+                "--root_dir", "img/face",
             ]
         }
     ]

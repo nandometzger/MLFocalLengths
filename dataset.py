@@ -26,6 +26,7 @@ class ImageFolder(Dataset):
 
     def __init__(self, root_dir):
         self.root_dir = root_dir
+        self.eps = 1e-7
 
         self.transform = transforms.Compose([
             transforms.ToTensor(),
@@ -43,7 +44,7 @@ class ImageFolder(Dataset):
 
         name = self.files[idx] 
         image_path = os.path.join(self.root_dir, name)
-        if image_path.split(".")[1] in ["jpg", "JPG"]:
+        if image_path.split(".")[-1] in ["jpg", "JPG"]:
             with Image.open(image_path) as f: 
                 img = np.array(f)
         else:
@@ -54,6 +55,7 @@ class ImageFolder(Dataset):
                     raise Exception("Couldn't handle this file type{}".format(image_path))
 
         h, w, _ = img.shape 
+        img_raw = img
         if h<w:
             img = np.transpose(img, (1,0,2))
         h, w, _ = img.shape 
@@ -63,18 +65,19 @@ class ImageFolder(Dataset):
 
 
         # reshape 
-        img = np.transpose(img.astype(np.float32),(1,2,0))
+        res = res.astype(np.float32)
+        # res = np.transpose(res.astype(np.float32),(1,2,0))
 
         # noramlize
-        v_min, v_max = img.min(), img.max()
+        v_min, v_max = res.min(), res.max()
         new_min, new_max = 0.0, 1.0
-        img = (img - v_min)/(v_max - v_min + self.eps)*(new_max - new_min) + new_min
+        res = (res - v_min)/(v_max - v_min + self.eps)*(new_max - new_min) + new_min
 
         # apply transforms and augmentations
         if self.transform:
-            img = self.transform(img)
+            res = self.transform(res)
 
-        return {'img': img, "path": image_path}
+        return {'img': res, "path": image_path, "raw_img": img_raw}
 
 
 class FocalLengthDataset(Dataset):

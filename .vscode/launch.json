@@ -41,7 +41,7 @@
             // "logToFile": true
             "args": [
                 "--checkpoint", "myoutdir/My/experiment_21/best_model.pth",
-                "--root_dir", "img/face",
+                "--root_dir", "img\\raw",
             ]
         }
     ]

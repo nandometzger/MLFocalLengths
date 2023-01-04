@@ -8,7 +8,8 @@ from torchvision.transforms import Normalize
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-   
+from exif import Image
+
 from dataset import ImageFolder
 
 from utils import to_cuda
@@ -32,10 +33,10 @@ class Evaluator:
         self.dataloader = self.get_dataloader(args)
 
         self.model = CNN()
-        self.model = self.model.to("cuda") if self.cuda else self.model
 
         self.resume(path=args.checkpoint)
-        self.model.cuda().eval()
+        self.model = self.model.to("cuda") if self.cuda else self.model
+        self.model.eval()
 
         torch.set_grad_enabled(False)
 
@@ -43,11 +44,16 @@ class Evaluator:
         test_stats = defaultdict(float)
 
         for sample in self.dataloader:
-            sample = to_cuda(sample)
+            sample = to_cuda(sample) if self.cuda else sample
 
             output = self.model(sample)
 
-            print(sample["path"][0][0] ,"Predicted", output.cpu().item(), "mm")
+            with open(sample["path"][0], 'rb') as img_file:
+                img = Image(img_file)
+                sorted(img.list_all())
+                img.copyright = 'Nando Metzger 2022'
+
+            print(sample["path"][0] ,"Predicted", output.cpu().item(), "mm")
 
         return None
 
@@ -61,7 +67,8 @@ class Evaluator:
     def resume(self, path):
         if not os.path.isfile(path):
             raise RuntimeError(f'No checkpoint found at \'{path}\'')
-        checkpoint = torch.load(path)
+        checkpoint = torch.load(path, map_location=torch.device('cuda') if self.cuda else torch.device('cpu'))
+        # self.load_state_dict(torch.load(PATH, map_location=device))
         if 'model' in checkpoint:
             self.model.load_state_dict(checkpoint['model'])
         else:

@@ -36,7 +36,6 @@ class ImageFolder(Dataset):
         self.files = os.listdir(root_dir)
 
 
-
     def __len__(self):
         return len(self.files)
 

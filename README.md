@@ -1,6 +1,6 @@
 # MLFocalLengths
 
-Information about the focal length with which a photo is taken might be obstructed (internet photos) or not available (vintage photos). Inferring the focal length of a photo solely from a monocular view is an ill-posed task that requires knowledge about the scale of objects and their distance to the camera - e.g. scene understanding. We train a deep learning model to acquire such scene understanding to predict the focal length.
+Information about the focal length with which a photo is taken might be obstructed (internet photos) or not available (vintage photos). Inferring the focal length of a photo solely from a monocular view is an ill-posed task that requires knowledge about the scale of objects and their distance to the camera - e.g. scene understanding. I trained a deep learning model to acquire such scene understanding to predict the focal length and open-source the model with this repository.
  
 ![test](img/stone_tagged2.gif)
 

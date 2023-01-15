@@ -64,7 +64,7 @@ class Evaluator:
             if self.args.save_demo:
                 subplot(1,1,1)
                 imshow(sample["raw_img"][0].cpu().numpy())
-                title("Predicted: {:2.1f}mm".format(output.cpu().item()))
+                title("Predicted: {:3.1f}mm".format(output.cpu().item()))
                 folder_name = "/".join(sample["path"][0][0].split("/")[:-2]+[sample["path"][0][0].split("/")[-2]+"_tagged"])
                 filename = "tagged_" + sample["path"][0][0].split("/")[-1]
                 outfile = os.path.join(folder_name,filename)

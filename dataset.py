@@ -81,12 +81,13 @@ class ImageFolder(Dataset):
 
 class FocalLengthDataset(Dataset):
     def __init__(self, root_dir, transform=None, hdf5_path=None, focal_length_path=None, force_recompute=False, mode="train", split_mode="rand",
-        append_new_data=False, recompute_split=False, in_memory=False):
+        append_new_data=False, recompute_split=False, in_memory=False, force_focal_length=None):
         self.root_dir = root_dir
         self.transform = transform
         self.hdf5_path = hdf5_path
         self.eps = 1e-7 
         self.in_memory = in_memory
+        self.force_focal_length = force_focal_length
 
         # check existence
         if not append_new_data:
@@ -123,15 +124,15 @@ class FocalLengthDataset(Dataset):
 
             # mask invalid data
             idx = idx[invalid_mask==1]
-            self.focal_length = self.focal_length[invalid_mask==1]
+            valid_focal_length = self.focal_length[invalid_mask==1]
 
             if split_mode=="rand":
-                X_train_idx, X_test_idx, y_train, y_test = train_test_split(idx, self.focal_length, test_size=0.2, random_state=1)
+                X_train_idx, X_test_idx, y_train, y_test = train_test_split(idx, valid_focal_length, test_size=0.2, random_state=1)
                 X_train_idx, X_val_idx, y_train, y_val = train_test_split(X_train_idx, y_train, test_size=0.25, random_state=1) # 0.25 x 0.8 = 0.2
             elif split_mode=="time":
                 n = len(idx)
-                X_train_idx, X_test_idx, X_val_idx = idx[:int(n*0.7)], idx[int(n*0.7):int(n*0.8)], idx[int(n*0.8):]
-                y_train, y_test, y_val = idx[:int(n*0.7)], idx[int(n*0.7):int(n*0.8)], idx[int(n*0.8):] 
+                X_test_idx, X_val_idx, X_train_idx = idx[:int(n*0.1)], idx[int(n*0.1):int(n*0.2)], idx[int(n*0.3):]
+                y_test, y_val, y_train = idx[:int(n*0.1)], idx[int(n*0.1):int(n*0.2)], idx[int(n*0.3):] 
 
                 split_dict = { "train": X_train_idx,  "test": X_test_idx, "val": X_val_idx  }
 
@@ -188,8 +189,11 @@ class FocalLengthDataset(Dataset):
                             with open(image_path, 'rb') as f: 
                                 
                                 tags = exifread.process_file(f)
-                                if "EXIF FocalLengthIn35mmFilm" in tags: 
+                                if "EXIF FocalLengthIn35mmFilm" in tags:
                                     focal_length = int(str(tags["EXIF FocalLengthIn35mmFilm"]))
+                                    valid = True
+                                elif self.force_focal_length is not None:
+                                    focal_length = self.force_focal_length
                                     valid = True
                                 else: 
                                     print("No Tag")
@@ -211,9 +215,9 @@ class FocalLengthDataset(Dataset):
                                     img = np.transpose(img, (1,0,2))
                                 h, w, _ = img.shape 
 
-                                img = img[(h-w)//2:-(h-w)//2, :]
-                                res = cv2.resize(img, dsize=(256, 256), interpolation=cv2.INTER_CUBIC)
-                                # im_resized = img.resize((256, 256))
+                                if h!=w:
+                                    img = img[(h-w)//2:-(h-w)//2, :]
+                                res = cv2.resize(img, dsize=(256, 256), interpolation=cv2.INTER_CUBIC) 
 
                                 dset[old_shape+i] = np.transpose(res,(2,0,1))
                                 Focal_lengths.append(focal_length)
@@ -288,9 +292,9 @@ class FocalLengthDataset(Dataset):
                             h, w, _ = img.shape 
                             if h<w:
                                 img = np.transpose(img, (1,0,2))
-                            h, w, _ = img.shape 
-
-                            img = img[(h-w)//2:-(h-w)//2, :]
+                            h, w, _ = img.shape  
+                            if h!=w:
+                                img = img[(h-w)//2:-(h-w)//2, :]
                             res = cv2.resize(img, dsize=(256, 256), interpolation=cv2.INTER_CUBIC)
                             # im_resized = img.resize((256, 256))
 
@@ -362,9 +366,9 @@ if __name__=='__main__':
     #     force_recompute=False,  split_mode="time", append_new_data=True)
 
     dataset = FocalLengthDataset(
-        root_dir=r'D:\Photo_collection_ssd',
-        transform=data_transform, hdf5_path="data/imgdataset3.h5", focal_length_path='data/split_file3.pickle',
-        force_recompute=False,  split_mode="time")
+        root_dir=r'data/raws/xx',
+        transform=data_transform, hdf5_path="data/imgdataset4.h5", focal_length_path='data/split_file4.pickle',
+        force_recompute=False,  split_mode="time", force_focal_length=12, append_new_data=False, recompute_split=True)
 
     # Create a dataloader to feed the dataset into a model
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)

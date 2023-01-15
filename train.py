@@ -205,12 +205,12 @@ class Trainer:
             ])
 
             train_dataset = FocalLengthDataset(root_dir=r'C:\Users\nando\Pictures\SD Kartenbackups\All_hierarchical\2022',
-                transform=data_transform, hdf5_path="data/imgdataset3.h5", focal_length_path='data/split_file3.pickle',
-                force_recompute=False, mode="train", split_mode="time", in_memory=args.in_memory)
+                transform=data_transform, hdf5_path="data/imgdataset4.h5", focal_length_path='data/split_file4.pickle',
+                force_recompute=False, mode="train", split_mode="time", in_memory=args.in_memory, recompute_split=True)
 
             val_dataset = FocalLengthDataset(root_dir=r'C:\Users\nando\Pictures\SD Kartenbackups\All_hierarchical\2022',
-                transform=data_transform_eval, hdf5_path="data/imgdataset3.h5", focal_length_path='data/split_file3.pickle',
-                force_recompute=False, mode="val", split_mode="time", in_memory=args.in_memory)
+                transform=data_transform_eval, hdf5_path="data/imgdataset4.h5", focal_length_path='data/split_file4.pickle',
+                force_recompute=False, mode="val", split_mode="time", in_memory=args.in_memory, recompute_split=True)
 
             datasets = {"train": train_dataset, "val": val_dataset}
 

@@ -8,7 +8,9 @@ from torchvision.transforms import Normalize
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from exif import Image
+import piexif
+from PIL import Image
+# from exif import Image
 
 from dataset import ImageFolder
 
@@ -47,13 +49,27 @@ class Evaluator:
             sample = to_cuda(sample) if self.cuda else sample
 
             output = self.model(sample)
+            
+            if sample["path"][0][0].split(".")[-1] in ["jpg", "JPG"]:
+                with Image.open(sample["path"][0][0]) as f: 
+                    img = np.array(f)
+            else:
+                with rawpy.imread(sample["path"][0][0]) as raw:  
+                    try:
+                        img = raw.postprocess()
+                    except:
+                        raise Exception("Couldn't handle this file type{}".format(sample["path"][0][0]))
 
-            with open(sample["path"][0], 'rb') as img_file:
+
+            img = Image.open(sample["path"][0][0])
+            exif_dict = piexif.load(img.info['exif'])
+
+            with open(sample["path"][0][0], 'rb') as img_file:
                 img = Image(img_file)
                 sorted(img.list_all())
                 img.copyright = 'Nando Metzger 2022'
 
-            print(sample["path"][0] ,"Predicted", output.cpu().item(), "mm")
+            print(sample["path"][0][0] ,"Predicted", output.cpu().item(), "mm")
 
         return None
 

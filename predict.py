@@ -10,7 +10,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import piexif
 from PIL import Image
-# from exif import Image
+from pylab import figure, imshow, matshow, grid, savefig, colorbar, subplot, title
+
 
 from dataset import ImageFolder
 
@@ -24,6 +25,7 @@ parser.add_argument('-c', '--config', is_config_file=True, help='Path to the con
 
 parser.add_argument('--checkpoint', type=str, required=True, help='Checkpoint path to evaluate') 
 parser.add_argument('--root_dir', type=str, required=True, help='Root directory of the dataset')
+parser.add_argument('--save_demo', type=bool, default=False, help='Root directory of the dataset')
 parser.add_argument('--num-workers', type=int, default=8, metavar='N', help='Number of dataloader worker processes') 
 
 class Evaluator:
@@ -51,25 +53,26 @@ class Evaluator:
             output = self.model(sample)
             
             if sample["path"][0][0].split(".")[-1] in ["jpg", "JPG"]:
-                with Image.open(sample["path"][0][0]) as f: 
-                    img = np.array(f)
+                exif_dict = piexif.load(sample["path"][0][0])
+                exif_dict["MLFocalLength"] = int(output.cpu().numpy().item()+0.5) 
+                exif_bytes = piexif.dump(exif_dict)
+                piexif.insert(exif_bytes, sample["path"][0][0])
+
             else:
-                with rawpy.imread(sample["path"][0][0]) as raw:  
-                    try:
-                        img = raw.postprocess()
-                    except:
-                        raise Exception("Couldn't handle this file type{}".format(sample["path"][0][0]))
+                print("metadata tagging only supported for jpgs")
 
+            if self.args.save_demo:
+                subplot(1,1,1)
+                imshow(sample["raw_img"][0].cpu().numpy())
+                title("{:2.1f}mm".format(output.cpu().item()))
+                folder_name = "/".join(sample["path"][0][0].split("/")[:-2]+[sample["path"][0][0].split("/")[-2]+"_taged"])
+                filename = "taged_" + sample["path"][0][0].split("/")[-1]
+                outfile = os.path.join(folder_name,filename)
+                if not os.path.exists(folder_name):
+                    os.makedirs(folder_name) 
+                savefig(outfile)
 
-            img = Image.open(sample["path"][0][0])
-            exif_dict = piexif.load(img.info['exif'])
-
-            with open(sample["path"][0][0], 'rb') as img_file:
-                img = Image(img_file)
-                sorted(img.list_all())
-                img.copyright = 'Nando Metzger 2022'
-
-            print(sample["path"][0][0] ,"Predicted", output.cpu().item(), "mm")
+            print(sample["path"][0][0] , "Predicted {:5.1f}mm".format(output.cpu().item()))
 
         return None
 

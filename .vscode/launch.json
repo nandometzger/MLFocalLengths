@@ -40,10 +40,11 @@
             "justMyCode": true,
             // "logToFile": true
             "args": [
-                "--checkpoint", "myoutdir/My/experiment_24/best_model.pth",
+                "--checkpoint", "myoutdir/My/experiment_21/best_model.pth",
                 // "--root_dir", "img/raw",
                 // "--root_dir", "C:\Users\nando\Pictures\SD Kartenbackups\All_hierarchical\2022\2022-12\2022-12-24"
-                "--root_dir", "img/stone"
+                "--root_dir", "img/stone",
+                "--save_demo", "True"
             ]
         }
     ]

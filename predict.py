@@ -64,9 +64,9 @@ class Evaluator:
             if self.args.save_demo:
                 subplot(1,1,1)
                 imshow(sample["raw_img"][0].cpu().numpy())
-                title("{:2.1f}mm".format(output.cpu().item()))
-                folder_name = "/".join(sample["path"][0][0].split("/")[:-2]+[sample["path"][0][0].split("/")[-2]+"_taged"])
-                filename = "taged_" + sample["path"][0][0].split("/")[-1]
+                title("Predicted: {:2.1f}mm".format(output.cpu().item()))
+                folder_name = "/".join(sample["path"][0][0].split("/")[:-2]+[sample["path"][0][0].split("/")[-2]+"_tagged"])
+                filename = "tagged_" + sample["path"][0][0].split("/")[-1]
                 outfile = os.path.join(folder_name,filename)
                 if not os.path.exists(folder_name):
                     os.makedirs(folder_name) 

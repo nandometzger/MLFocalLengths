@@ -1,9 +1,21 @@
 # MLFocalLengths
 
-Modern camera lenses transmit the used focal length via the exif data which is then embedded in the raw images. However, when shooting with vintage lenses, this transfer of information is not taking place. Inferring the focallength of a photo soley from a monocular view requires knowledge about the scale of objects and their distance to the camera - e.g. scene understanding.
+Information about the focal length with which a photo is taken might be obstructed (internet photos) or not available (vintage photos). Inferring the focal length of a photo solely from a monocular view is an ill-posed task that requires knowledge about the scale of objects and their distance to the camera - e.g. scene understanding. I trained a deep learning model to acquire such scene understanding to predict the focal length and open-source the model with this repository.
+ 
+![test](img/stone_tagged2.gif)
 
-![test](img/focallengths.gif)
-Animation taken from Reddit user [u/1Voice1Life](thttps://www.reddit.com/r/educationalgifs/comments/4a5ky3/how_different_lenses_affect_portraits/)
+Focal lengths influence the distortion of an image.
+Source image credits to Reddit user [u/scyshc](https://www.reddit.com/r/photography/comments/48l8uy/a_gif_showing_why_focal_length_matters/)
 
+# Method
+
+I preprocessed the focal lengths of ~15k of my personal image database to convert them to 35mm equivalent using [Jeffrey Friedl's LR Plugin](http://regex.info/blog/lightroom-goodies/focal-length-sort). The images were cropped to a square shape and resampled to 256x256. Using that data, I trained an EfficientNet B4 with log-transformed labels, which showed a mean absolute error of 16mm on the hold-out set.
+
+# Reproducability
+
+Set up a python environment using ``requirements.txt``. Commands for the creation of the dataset, training, and prediction are provided in the [lauch.json file](https://github.com/nandometzger/MLFocalLengths/blob/main/.vscode/launch.json).
+Data is available upon request.
+
+The pretrained model can be accessed [here](https://drive.google.com/file/d/16Yf8dQrIAg-k8RKcy_chRsctrhQ4yzse/view?usp=share_link).
 
 

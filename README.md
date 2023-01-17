@@ -9,7 +9,7 @@ Source image credits to Reddit user [u/scyshc](https://www.reddit.com/r/photogra
 
 # Method
 
-I preprocessed the focal lengths of ~15k of my personal image database to convert them to 35mm equivalent using [Jeffrey Friedl's LR Plugin](http://regex.info/blog/lightroom-goodies/focal-length-sort). The images were cropped to a square shape and resampled to 256x256. Using that data, I trained an EfficientNet B4 with log-transformed labels, which showed a mean absolute error of 16mm on the hold-out set.
+I preprocessed the focal lengths of ~15k of my personal image database to convert them to 35mm equivalent using [Jeffrey Friedl's LR Plugin](http://regex.info/blog/lightroom-goodies/focal-length-sort). The images were cropped to a square shape and resampled to 256x256. Using that data, I trained an EfficientNet B4 with log-transformed labels and L1 loss, which showed a mean absolute error of 16mm on the hold-out set.
 
 # Reproducability
 

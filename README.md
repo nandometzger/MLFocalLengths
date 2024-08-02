@@ -19,3 +19,14 @@ Training data is available upon request.
 The pretrained model can be accessed [here](https://drive.google.com/file/d/16Yf8dQrIAg-k8RKcy_chRsctrhQ4yzse/view?usp=share_link).
 
 
+# Cite
+
+```
+@misc{Metzger2023MLFocalLengths,
+  author       = {Nando Metzger},
+  title        = {MLFocalLengths: Estimating the Focal Length of a Single Image},
+  year         = {2023},
+  url          = {https://github.com/nandometzger/MLFocalLengths},
+  note         = {GitHub repository}
+}
+```

@@ -19,7 +19,7 @@ Training data is available upon request.
 The pretrained model can be accessed [here](https://drive.google.com/file/d/16Yf8dQrIAg-k8RKcy_chRsctrhQ4yzse/view?usp=share_link).
 
 
-# Cite
+# Citation
 
 ```
 @misc{Metzger2023MLFocalLengths,

@@ -9,11 +9,9 @@ from torch import optim
 # from torch.utils.tensorboard import SummaryWriter
 from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader
-from torchvision.transforms import Normalize 
+from torchvision.transforms import Normalize
 from torchvision import transforms
 from tqdm import tqdm
-import wandb 
-import matplotlib.pyplot as plt 
 from utils import seed_all, new_log, to_cuda
 from model import CNN
 
@@ -32,12 +30,17 @@ parser.add_argument('--val-every-n-epochs', type=int, default=1, help='Validatio
 parser.add_argument('--resume', type=str, default=None, help='Checkpoint path to resume')
 parser.add_argument('--seed', type=int, default=12345, help='Random seed')
 parser.add_argument('--wandb-project', type=str, default='focallengths', help='Wandb project name')
+parser.add_argument('--wandb', type=str, default='auto', choices=['auto', 'online', 'offline', 'disabled'],
+                    help="Weights & Biases logging; 'auto' uses it only when installed and logged in")
 
 # data
 parser.add_argument('--dataset', type=str, default="My", help='Name of the dataset')
+parser.add_argument('--data-dir', type=str, default='', help='Root image directory (only read when the cache is rebuilt)')
+parser.add_argument('--hdf5-path', type=str, default='data/imgdataset4.h5', help='Cached HDF5 dataset')
+parser.add_argument('--split-file', type=str, default='data/split_file4.pickle', help='Train/val/test split file')
 parser.add_argument('--num-workers', type=int, default=8, metavar='N', help='Number of dataloader worker processes')
 parser.add_argument('--batch-size', type=int, default=8)
-parser.add_argument('--in_memory', action='store_true', help='')
+parser.add_argument('--in_memory', action='store_true', help='Hold the whole dataset in RAM')
 
 # training
 parser.add_argument('--loss', default='l1', type=str, choices=['l1', 'mse'])
@@ -52,6 +55,45 @@ parser.add_argument('--lr-gamma', type=float, default=0.9, help='LR decay rate')
 parser.add_argument('--skip-first', action='store_true', help='Don\'t optimize during first epoch')
 parser.add_argument('--gradient-clip', type=float, default=0.01, help='If > 0, clips gradient norm to that value')
 
+
+
+class NullLogger:
+    """Stand-in for wandb so training runs without an account or network."""
+
+    def log(self, *args, **kwargs):
+        pass
+
+    def finish(self):
+        pass
+
+
+def setup_logger(args, run_dir):
+    """Return a wandb run, or a no-op logger when W&B is unavailable or off.
+
+    Training used to import wandb at module scope and call ``wandb.init``
+    unconditionally, so anyone without an account got an interactive login prompt
+    before the first batch.
+    """
+    if args.wandb == 'disabled':
+        return NullLogger()
+
+    try:
+        import wandb
+    except ImportError:
+        if args.wandb != 'auto':
+            raise SystemExit("error: --wandb requested but the wandb package is not installed")
+        print("wandb not installed; continuing without experiment logging.")
+        return NullLogger()
+
+    mode = args.wandb
+    if mode == 'auto':
+        logged_in = bool(os.environ.get('WANDB_API_KEY')) or os.path.exists(os.path.expanduser('~/.netrc'))
+        mode = 'online' if logged_in else 'offline'
+        print(f"wandb: logging {mode} (use --wandb to override)")
+
+    run = wandb.init(project=args.wandb_project, dir=run_dir, mode=mode)
+    wandb.config.update(args)
+    return run
 
 
 class Trainer:
@@ -70,8 +112,7 @@ class Trainer:
         self.experiment_folder = new_log(os.path.join(args.save_dir, args.dataset), args)
         self.args.experiment_folder = self.experiment_folder
 
-        wandb.init(project=args.wandb_project, dir=self.experiment_folder)
-        wandb.config.update(self.args)
+        self.logger = setup_logger(args, self.experiment_folder)
         self.writer = None
 
         if args.optimizer == 'adam':
@@ -115,7 +156,7 @@ class Trainer:
 
                 if self.args.lr_scheduler == 'step':
                     self.scheduler.step()
-                    wandb.log({'log_lr': np.log10(self.scheduler.get_last_lr())}, self.iter)
+                    self.logger.log({'log_lr': np.log10(self.scheduler.get_last_lr())}, self.iter)
 
                 self.epoch += 1
 
@@ -157,7 +198,7 @@ class Trainer:
                                         validation_loss=self.val_stats['optimization_loss'],
                                         best_validation_loss=self.best_optimization_loss)
 
-                    wandb.log({k + '/train': v for k, v in self.train_stats.items()}, self.iter)
+                    self.logger.log({k + '/train': v for k, v in self.train_stats.items()}, self.iter)
 
                     # reset metrics
                     self.train_stats = defaultdict(float)
@@ -181,7 +222,7 @@ class Trainer:
 
             self.val_stats = {k: v / len(self.dataloaders['val']) for k, v in self.val_stats.items()}
 
-            wandb.log({k + '/val': v for k, v in self.val_stats.items()}, self.iter)
+            self.logger.log({k + '/val': v for k, v in self.val_stats.items()}, self.iter)
 
             if self.val_stats['optimization_loss'] < self.best_optimization_loss:
                 self.best_optimization_loss = self.val_stats['optimization_loss']
@@ -204,12 +245,12 @@ class Trainer:
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)), 
             ])
 
-            train_dataset = FocalLengthDataset(root_dir=r'C:\Users\nando\Pictures\SD Kartenbackups\All_hierarchical\2022',
-                transform=data_transform, hdf5_path="data/imgdataset4.h5", focal_length_path='data/split_file4.pickle',
+            train_dataset = FocalLengthDataset(root_dir=args.data_dir,
+                transform=data_transform, hdf5_path=args.hdf5_path, focal_length_path=args.split_file,
                 force_recompute=False, mode="train", split_mode="time", in_memory=args.in_memory, recompute_split=True)
 
-            val_dataset = FocalLengthDataset(root_dir=r'C:\Users\nando\Pictures\SD Kartenbackups\All_hierarchical\2022',
-                transform=data_transform_eval, hdf5_path="data/imgdataset4.h5", focal_length_path='data/split_file4.pickle',
+            val_dataset = FocalLengthDataset(root_dir=args.data_dir,
+                transform=data_transform_eval, hdf5_path=args.hdf5_path, focal_length_path=args.split_file,
                 force_recompute=False, mode="val", split_mode="time", in_memory=args.in_memory, recompute_split=True)
 
             datasets = {"train": train_dataset, "val": val_dataset}

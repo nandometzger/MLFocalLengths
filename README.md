@@ -5,12 +5,12 @@
 ### Estimating the focal length of a single image
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.9](https://img.shields.io/badge/Python-3.9-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Backbone: EfficientNet-B4](https://img.shields.io/badge/Backbone-EfficientNet--B4-4C9A2A.svg)](https://arxiv.org/abs/1905.11946)
-[![Pretrained weights](https://img.shields.io/badge/Weights-Google%20Drive-4285F4?logo=googledrive&logoColor=white)](https://drive.google.com/file/d/16Yf8dQrIAg-k8RKcy_chRsctrhQ4yzse/view?usp=share_link)
+[![Pretrained weights](https://img.shields.io/badge/Weights-auto--download-4285F4?logo=googledrive&logoColor=white)](https://drive.google.com/file/d/16Yf8dQrIAg-k8RKcy_chRsctrhQ4yzse/view?usp=share_link)
 
-**Point it at a photo. Get the 35 mm-equivalent focal length back — no EXIF required.**
+**Point it at a photo. Get the focal length back — no EXIF required.**
 
 ![Focal length predictions on a dolly-zoom sequence](img/stone_tagged2.gif)
 
@@ -32,10 +32,73 @@ This repository trains a CNN to do exactly that, and ships the pretrained model.
 ## Highlights
 
 - 🎯 **16 mm mean absolute error** on a held-out set of real photographs
-- 🧠 **EfficientNet-B4** regression head trained with an **L1 loss in log-space** — so a 10 mm mistake at wide angle counts more than at telephoto
-- 🏷️ **Writes predictions straight into the image EXIF**, so results travel with the file
-- 🖼️ **RAW and JPEG** input, with optional annotated preview images
-- 📦 **Pretrained weights included** — run inference without training anything
+- 📐 Reports both the **35mm-equivalent** and the **physical** focal length, deriving the sensor crop factor from EXIF when the camera recorded it
+- 🔍 **Reads any focal length metadata still in the file** and scores its own prediction against it
+- 🤖 **JSON and CSV output**, non-interactive, for scripting and batch jobs
+- 📦 **Weights download themselves** on first run — one command from clone to prediction
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+python predict.py img/stone
+```
+
+That is the whole setup. The pretrained weights (233 MB) are fetched automatically on first use and cached in `~/.cache/mlfocallengths/`.
+
+```
+frame_00_delay-0.03s.jpg     72.1 mm equiv    72.1 mm physical  crop 1x (assumed_full_frame)
+frame_08_delay-0.03s.jpg     21.0 mm equiv    21.0 mm physical  crop 1x (assumed_full_frame)
+```
+
+On a photo that still has its EXIF, the model's prediction is scored against what the camera recorded:
+
+```
+$ python predict.py IMG_9010.CR2
+IMG_9010.CR2     62.1 mm equiv    62.0 mm physical  crop 1.002x (exif_sensor_width)
+                                  | EXIF 50.1 mm equiv [derived_from_physical], error +12.0 mm
+```
+
+### Common invocations
+
+| Goal | Command |
+|---|---|
+| One image | `python predict.py photo.jpg` |
+| A whole library | `python predict.py ~/Pictures --recursive` |
+| Machine-readable output | `python predict.py ~/Pictures --json out.json --csv out.csv` |
+| Annotated preview images | `python predict.py img/stone --save-demo demo/` |
+| Known APS-C body | `python predict.py photo.jpg --crop-factor 1.5` |
+| Tag the files themselves | `python predict.py ~/Pictures --write-exif` |
+
+Run `python predict.py --help` for the full set.
+
+## The two focal lengths
+
+The network can only predict a **35mm-equivalent** focal length, because that is the one number comparable across sensor sizes — a 25 mm lens on Micro Four Thirds frames the same scene as a 50 mm lens on full frame, and the image alone cannot tell the two apart.
+
+Turning that back into the **physical** focal length engraved on the lens needs the sensor's crop factor, which the pixels genuinely do not contain. It is taken from the first source available:
+
+| Source | Meaning |
+|---|---|
+| `user_crop_factor` | You passed `--crop-factor` |
+| `user_sensor_width` | You passed `--sensor-width` (mm) |
+| `exif_35mm_ratio` | Camera recorded both focal lengths; their ratio is exact |
+| `exif_sensor_width` | Derived from the EXIF `FocalPlane*` tags |
+| `assumed_full_frame` | Nothing was available — physical equals equivalent, and this label says so |
+
+Every result carries its source, so an assumed number is never mistaken for a measured one.
+
+## Reading and writing EXIF
+
+Whatever focal length metadata survives in the file is read out and reported alongside the prediction: physical focal length, 35mm equivalent, camera make and model, lens model. Where the camera recorded a physical focal length but no equivalent — common on older full-frame bodies — the equivalent is reconstructed from the measured crop factor and labelled `derived_from_physical`.
+
+`--write-exif` records predictions back into JPEGs. It is **off by default**, and even when enabled it will not overwrite focal length tags the camera itself wrote — that metadata is provenance, and it is the ground truth this tool reports against. The prediction always lands in `UserComment`, clearly marked:
+
+```
+MLFocalLengths: 72.1mm 35mm-equivalent, 72.1mm physical (crop factor 1, assumed_full_frame) -- predicted, not measured
+```
+
+Pass `--overwrite-exif` to deliberately replace the camera's own tags. RAW files are read but never written to.
 
 ## Results
 
@@ -47,42 +110,6 @@ This repository trains a CNN to do exactly that, and ships the pretrained model.
 | Input resolution | 256 × 256, centre-cropped to square |
 | Optimisation | Adam, L1 loss on log-focal-length |
 
-## Quick start
-
-### 1. Set up the environment
-
-`requirements.txt` is a conda specification (linux-64):
-
-```bash
-conda create --name focallengths --file requirements.txt
-conda activate focallengths
-```
-
-### 2. Get the pretrained model
-
-Download the checkpoint from [Google Drive](https://drive.google.com/file/d/16Yf8dQrIAg-k8RKcy_chRsctrhQ4yzse/view?usp=share_link) and put it somewhere reachable, e.g. `checkpoints/best_model.pth`.
-
-### 3. Predict
-
-```bash
-python predict.py \
-    --checkpoint checkpoints/best_model.pth \
-    --root_dir img/stone \
-    --save_demo True
-```
-
-Every image in `--root_dir` is processed, and for each one you get:
-
-```
-img/stone/frame_00.jpg  Predicted  72.2mm
-```
-
-- **JPEGs** additionally receive an `MLFocalLength` entry written into their EXIF block.
-- **`--save_demo True`** renders annotated copies next to the input folder, in `<folder>_tagged/`.
-- RAW files (e.g. `.CR2`) are decoded via `rawpy`; EXIF tagging is JPEG-only.
-
-Runs on GPU when one is available, otherwise on CPU.
-
 ## How it works
 
 **Labels.** Focal lengths were read from the EXIF field `FocalLengthIn35mmFilm` and normalised to 35 mm equivalent with [Jeffrey Friedl's Lightroom plugin](http://regex.info/blog/lightroom-goodies/focal-length-sort), so that photos from different sensor sizes are directly comparable.
@@ -93,43 +120,45 @@ Runs on GPU when one is available, otherwise on CPU.
 
 **Loss.** L1, but computed on `log(focal length)`. Focal length is perceptually multiplicative — the step from 16 mm to 24 mm matters far more than 180 mm to 188 mm — and the log transform makes the loss reflect that. A softplus keeps predictions positive before the log.
 
-**Training.** Adam with a step LR schedule, gradient clipping, and horizontal/vertical flip augmentation. Metrics stream to [Weights & Biases](https://wandb.ai/) under the project `focallengths`.
+**Training.** Adam with a step LR schedule, gradient clipping, and horizontal/vertical flip augmentation. Metrics stream to [Weights & Biases](https://wandb.ai/) when you are logged in, and are silently skipped when you are not.
 
 ## Training it yourself
 
-Training data is available upon request. Once you have a folder of photos with intact EXIF:
-
-**Build the HDF5 dataset** (paths are configured at the bottom of `dataset.py`):
+Training data is available upon request. Given a folder of photos with intact EXIF:
 
 ```bash
-python dataset.py
+# 1. Build the HDF5 cache (keeps only images with a focal length tag)
+python dataset.py --data-dir ~/Pictures/2022 --hdf5-path data/imgdataset4.h5
+
+# 2. Train
+python train.py --save-dir myoutdir --batch-size 64 --lr 0.0001 \
+    --lr-step 4 --lr-gamma 0.9 --in_memory
+
+# 3. Evaluate on the held-out split
+python evaluate.py --checkpoint myoutdir/My/experiment_0/best_model.pth
 ```
 
-**Train:**
+Checkpoints land in `myoutdir/<dataset>/experiment_<n>/`. Add `--wandb disabled` to turn off experiment logging entirely, or `--wandb online` to force it. Run any script with `--help` for the full set of options.
+
+## Tests
 
 ```bash
-python train.py \
-    --save-dir myoutdir \
-    --batch-size 64 \
-    --lr 0.0001 \
-    --lr-step 4 \
-    --lr-gamma 0.9 \
-    --in_memory
+pip install pytest && python -m pytest tests/
 ```
 
-Checkpoints land in `myoutdir/<dataset>/experiment_<n>/`. Run `python train.py --help` for the full set of options (optimizer, scheduler, weight decay, gradient clipping, resuming, …). The same commands are also available as VS Code launch configurations in [`.vscode/launch.json`](.vscode/launch.json).
-
-> **Note:** dataset roots are currently hard-coded in `dataset.py` and `train.py::get_dataloaders`. Point them at your own image directory before training.
+47 tests covering the crop-factor maths, EXIF round-trips, and the image loader's edge cases (square, portrait, panoramic, grayscale, uniform images, and folders containing sidecar files). The end-to-end test runs only when the pretrained checkpoint is present locally.
 
 ## Repository layout
 
 ```
+├── predict.py     Inference CLI: focal lengths, EXIF readout, JSON/CSV, previews
+├── exif_tools.py  EXIF reading, crop-factor derivation, prediction write-back
 ├── model.py       EfficientNet-B4 regressor + log-space L1 loss
-├── dataset.py     EXIF parsing, RAW/JPEG loading, HDF5 caching, splits
-├── train.py       Training loop, W&B logging, checkpointing
-├── predict.py     Inference on a folder, EXIF tagging, demo rendering
-├── test.py        Evaluation on the held-out split
+├── dataset.py     Image loading and preprocessing, HDF5 cache builder, splits
+├── train.py       Training loop, optional W&B logging, checkpointing
+├── evaluate.py    Evaluation on the held-out split
 ├── utils.py       Seeding, logging directories, CUDA helpers
+├── tests/         pytest suite
 └── img/           Demo sequences and example outputs
 ```
 

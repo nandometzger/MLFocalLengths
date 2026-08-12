@@ -1,6 +1,26 @@
+# data and experiment outputs
 data
 datafolder
 myoutdir
-__pycache__
-img/face*
 plot_outputs
+checkpoints
+*.pth
+*.h5
+*.pickle
+wandb
+
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv
+venv
+*.egg-info
+
+# editor / OS
+.DS_Store
+Thumbs.db
+
+# scratch copies
+*" - Copy"*
+img/face*
